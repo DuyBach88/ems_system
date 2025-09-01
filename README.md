@@ -45,6 +45,3 @@ A fullstack Human Resource Management System (HRMS) built with **React** (Fronte
 | **Database** | MongoDB (Mongoose)                          |
 | **Others**   | Git, Postman, dotenv, CORS                  |
 
----
-
-## 📁 Folder Structure
