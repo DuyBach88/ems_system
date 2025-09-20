@@ -25,7 +25,7 @@ const List = () => {
             profileImage: emp.userId.profileImage ? (
               <img
                 className=" with-40 rounded-full"
-                src={`http://localhost:3000/uploads/${emp.userId.profileImage}`}
+                src={emp.userId.profileImage}
                 alt={emp.userId.name}
               />
             ) : (

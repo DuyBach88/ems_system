@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const EditDepartment = () => {
   const { id } = useParams();
@@ -10,7 +12,6 @@ const EditDepartment = () => {
     description: "",
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchDepartment = async () => {
@@ -27,11 +28,10 @@ const EditDepartment = () => {
         if (response.data.success) {
           setDepartment(response.data.department);
         } else {
-          setError("Failed to fetch department.");
+          toast.error("Failed to fetch department.");
         }
-        console.log(response.data);
       } catch (err) {
-        setError("Error fetching department.");
+        toast.error("Error fetching department.");
         console.error(err);
       } finally {
         setLoading(false);
@@ -57,13 +57,21 @@ const EditDepartment = () => {
           },
         }
       );
-      navigate("/admin-dashboard/departments");
+      toast.success(" Department updated successfully!");
+      setTimeout(() => {
+        navigate("/admin-dashboard/departments");
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update department.");
+      toast.error(err.response?.data?.message || "Failed to update department.");
     }
   };
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading)
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -71,12 +79,6 @@ const EditDepartment = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">
           Edit Department
         </h2>
-
-        {error && (
-          <div className="bg-red-100 text-red-600 p-3 rounded mb-4">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>

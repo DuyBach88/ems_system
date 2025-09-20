@@ -1,59 +1,46 @@
 import Employee from "../models/Employee.js";
 import User from "../models/User.js";
+import { v2 as cloudinary } from "cloudinary";
+import { uploadToCloudinary } from "../utils/cloudinaryUpload.js";
 import bcrypt from "bcrypt";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import mongoose from "mongoose";
 
-// Ensure upload directory exists
-const uploadDir = path.join("public", "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Helper function sinh Employee ID
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
+const generateEmployeeId = async () => {
+  const lastEmployee = await Employee.findOne().sort({ createdAt: -1 });
+  if (!lastEmployee) return "EMP-0001";
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
-  fileFilter: (req, file, cb) => {
-    const allowed = ["image/jpeg", "image/png", "image/jpg"];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only .jpg, .jpeg, and .png files are allowed"), false);
+  const lastId = lastEmployee.employeeId; // ví dụ EMP-0007
+  const lastNum = parseInt(lastId.split("-")[1], 10); // 7
+  const newNum = lastNum + 1;
+  return `EMP-${String(newNum).padStart(4, "0")}`; // EMP-0008
+};
+// Tạo trước Employee ID tiếp theo (preview)
+const getNextEmployeeId = async (req, res) => {
+  try {
+    const lastEmployee = await Employee.findOne().sort({ createdAt: -1 });
+    let nextId = "EMP-0001";
+
+    if (lastEmployee) {
+      const lastNum = parseInt(lastEmployee.employeeId.split("-")[1], 10);
+      nextId = `EMP-${String(lastNum + 1).padStart(4, "0")}`;
     }
-  },
-});
 
-// Middleware to handle Multer errors
-const handleMulterErrors = (err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    return res
-      .status(400)
-      .json({ success: false, message: `Multer error: ${err.message}` });
-  } else if (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    res.status(200).json({ success: true, nextId });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-  next();
 };
 
 const addEmployee = async (req, res) => {
-  let savedUser = null; // Declare savedUser at the top to ensure scope
+  let savedUser = null;
   try {
     const {
       name,
       email,
       password,
       role,
-      employeeId,
       dob,
       gender,
       phone,
@@ -63,7 +50,6 @@ const addEmployee = async (req, res) => {
       salary,
     } = req.body;
 
-    // Basic input validation
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -71,41 +57,39 @@ const addEmployee = async (req, res) => {
       });
     }
 
-    // Check for existing user
-    const user = await User.findOne({ email });
-    if (user) {
+    if (await User.findOne({ email })) {
       return res
         .status(409)
-        .json({ success: false, message: "User already exists in the system" });
+        .json({ success: false, message: "User already exists" });
     }
 
-    // Validate password strength
-    if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 8 characters long",
-      });
-    }
+    // 🔹 Sinh Employee ID tự động
+    const employeeId = await generateEmployeeId();
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    if (await Employee.findOne({ employeeId })) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Employee ID already exists" });
+
+    // Upload avatar lên Cloudinary nếu có
+    let profileImageUrl = null;
+    let profileImagePublicId = null;
+
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer, "employees");
+      console.log("Cloudinary upload result:", result);
+      profileImageUrl = result.secure_url;
+      profileImagePublicId = result.public_id;
     }
-    // Save User
+
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
       role,
-      profileImage: req.file ? req.file.filename : null,
+      profileImage: profileImageUrl,
+      profileImagePublicId,
     });
 
     savedUser = await newUser.save();
-    console.log("Saved user:", savedUser._id); // Debug log
 
-    // Save Employee
     const newEmployee = new Employee({
       employeeId,
       dob,
@@ -119,30 +103,23 @@ const addEmployee = async (req, res) => {
     });
 
     await newEmployee.save();
-    console.log("Saved employee with userId:", savedUser._id); // Debug log
 
-    return res
-      .status(201)
-      .json({ success: true, message: "Employee added successfully" });
+    return res.status(201).json({
+      success: true,
+      message: "Employee added successfully",
+      employeeId, // trả về để FE hiển thị
+    });
   } catch (err) {
-    // Clean up: Delete the uploaded file and User if created
-    if (req.file && fs.existsSync(path.join(uploadDir, req.file.filename))) {
-      fs.unlinkSync(path.join(uploadDir, req.file.filename));
-      console.log("Cleaned up uploaded file:", req.file.filename);
-    }
-    if (savedUser) {
-      await User.deleteOne({ _id: savedUser._id });
-      console.log("Cleaned up user:", savedUser._id);
-    }
-    if (err.name === "ValidationError") {
-      return res.status(400).json({ success: false, message: err.message });
-    }
-    console.error("Error adding employee:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    if (savedUser) await User.deleteOne({ _id: savedUser._id });
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal server error",
+    });
   }
 };
+
+// GET ALL EMPLOYEES
+
 const getEmployees = async (req, res) => {
   try {
     const employees = await Employee.find()
@@ -150,67 +127,96 @@ const getEmployees = async (req, res) => {
       .populate("department");
 
     res.status(200).json({ success: true, employees });
-  } catch (err) {}
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
+
+// GET SINGLE EMPLOYEE
+
 const getEmployee = async (req, res) => {
   const { id } = req.params;
   try {
-    let employee;
-    employee = await Employee.findById({ _id: id })
-      .populate({ path: "userId", select: "-password" })
-      .populate("department");
+    let employee = null;
+
+    if (mongoose.isValidObjectId(id)) {
+      employee = await Employee.findById(id)
+        .populate({ path: "userId", select: "-password" })
+        .populate("department");
+    }
+
     if (!employee) {
       employee = await Employee.findOne({ userId: id })
         .populate({ path: "userId", select: "-password" })
         .populate("department");
     }
+
+    if (!employee) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Employee not found" });
+    }
+
     res.status(200).json({ success: true, employee });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// UPDATE EMPLOYEE
 const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Since FormData is used, fields are in req.body after multer parsing
     const { name, designation, department, salary } = req.body;
 
-    // Validate required fields
     if (!name || !designation || !department) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, designation, and department are required",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Name, designation, and department are required",
+        });
     }
 
-    // Find employee by ID
     const employee = await Employee.findById(id);
     if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Employee not found" });
     }
 
-    // Find associated user
     const user = await User.findById(employee.userId);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
-    // Update user (name)
-    const updatedUser = await User.findByIdAndUpdate(
+    // 🔹 Upload ảnh mới nếu có
+    let profileImageUrl = user.profileImage;
+    let profileImagePublicId = user.profileImagePublicId;
+
+    if (req.file) {
+      // Xoá ảnh cũ trên Cloudinary nếu có
+      if (profileImagePublicId) {
+        await cloudinary.uploader.destroy(profileImagePublicId);
+      }
+
+      // Upload ảnh mới
+      const result = await uploadToCloudinary(req.file.buffer, "employees");
+      profileImageUrl = result.secure_url;
+      profileImagePublicId = result.public_id;
+    }
+
+    // Update user
+    await User.findByIdAndUpdate(
       employee.userId,
-      { name },
+      { name, profileImage: profileImageUrl, profileImagePublicId },
       { new: true }
     );
 
-    // Update employee (designation, department, salary)
-    const updatedEmployee = await Employee.findByIdAndUpdate(
+    // Update employee
+    await Employee.findByIdAndUpdate(
       id,
       {
         designation,
@@ -220,25 +226,20 @@ const updateEmployee = async (req, res) => {
       { new: true }
     );
 
-    if (!updatedUser || !updatedEmployee) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to update employee or user",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Employee updated successfully",
-    });
+    return res
+      .status(200)
+      .json({ success: true, message: "Employee updated successfully" });
   } catch (err) {
-    console.error("Error updating employee:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message || "Internal server error",
-    });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: err.message || "Internal server error",
+      });
   }
 };
+
+// GET EMPLOYEES BY DEPARTMENT
 const fetchEmployeesByDepId = async (req, res) => {
   try {
     const { id } = req.params;
@@ -248,12 +249,12 @@ const fetchEmployeesByDepId = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 export {
   addEmployee,
-  upload,
-  handleMulterErrors,
-  getEmployee,
   getEmployees,
+  getEmployee,
   updateEmployee,
   fetchEmployeesByDepId,
+  getNextEmployeeId,
 };

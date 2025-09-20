@@ -1,13 +1,12 @@
 import axios from "axios";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const AddDepartment = () => {
   const navigate = useNavigate();
   const [department, setDepartment] = useState({});
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,7 +20,6 @@ const AddDepartment = () => {
     e.preventDefault();
     setLoading(true);
 
-    setError("");
     try {
       const response = await axios.post(
         "http://localhost:3000/api/department/add",
@@ -34,19 +32,22 @@ const AddDepartment = () => {
       );
 
       if (response.data.success) {
-        setSuccess(true);
+        toast.success("🎉 Department added successfully!");
         setTimeout(() => {
           navigate("/admin-dashboard/departments");
         }, 1500);
       }
     } catch (error) {
       if (error.response && !error.response.data.success) {
-        setError(error.response.data.message);
+        toast.error(error.response.data.message || "Failed to add department");
+      } else {
+        toast.error("Server error. Please try again!");
       }
     } finally {
       setLoading(false);
     }
   };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -61,20 +62,6 @@ const AddDepartment = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-6">
           Add New Department
         </h2>
-
-        {/* ✅ Thông báo thành công */}
-        {success && (
-          <div className="mb-4 bg-green-100 text-green-700 px-4 py-2 rounded shadow text-center animate-pulse">
-            🎉 Department added successfully!
-          </div>
-        )}
-
-        {/* ❌ Lỗi */}
-        {error && (
-          <div className="mb-4 bg-red-100 text-red-700 px-4 py-2 rounded shadow text-center">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>

@@ -63,11 +63,7 @@ const ViewDetail = () => {
                 <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 p-1">
                   <img
                     className="w-full h-full object-cover rounded-full"
-                    src={
-                      employee.userId && employee.userId.profileImage
-                        ? `http://localhost:3000/uploads/${employee.userId.profileImage}`
-                        : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-                    }
+                    src={employee.userId && employee.userId.profileImage}
                     alt={employee.userId ? employee.userId.name : "Employee"}
                   />
                 </div>

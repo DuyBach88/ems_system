@@ -24,7 +24,7 @@ export const updateEmployee = async (id, employeeData) => {
   return axios.put(`${API_URL}/${id}`, employeeData, getAuthHeaders());
 };
 
-// Delete an employee (Only Admin)
+
 export const getEmployees = async (id) => {
   try {
     const response = await axios.get(
@@ -43,3 +43,8 @@ export const getEmployees = async (id) => {
     return [];
   }
 };
+export const getProfile = () =>
+  axios.get(`${API_URL}/me`, getAuthHeaders());
+
+export const updateProfile = (formData) =>
+  axios.put(`${API_URL}/update-profile`, formData, getAuthHeaders());

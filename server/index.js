@@ -11,6 +11,7 @@ import leaveRouter from "./routes/leave.js";
 import attendanceRouter from "./routes/attendance.js";
 import settingRouter from "./routes/setting.js";
 import dashboardRouter from "./routes/dashboard.js";
+import handonsRouter from "./routes/handon.js";
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,6 +33,7 @@ app.use("/api/leave", leaveRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/setting", settingRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/handon", handonsRouter);
 
 // Fallback 404 - not found
 app.use((req, res, next) => {

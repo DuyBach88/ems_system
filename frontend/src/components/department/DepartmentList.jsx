@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import DataTable from "react-data-table-component";
 import {
   columns as baseColumns,
@@ -46,20 +47,22 @@ const DepartmentList = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Are you sure you want to delete?");
-    if (!confirmed) return;
+  const confirmed = window.confirm("Are you sure you want to delete?");
+  if (!confirmed) return;
 
-    try {
-      await axios.delete(`http://localhost:3000/api/department/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-      fetchDepartments(); // refresh
-    } catch (err) {
-      alert("Failed to delete department.");
-    }
-  };
+  try {
+    await axios.delete(`http://localhost:3000/api/department/${id}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    toast.success(" Department deleted successfully!");
+    fetchDepartments(); // refresh list
+  } catch (err) {
+    toast.error(err.response?.data?.message || " Failed to delete department.");
+  }
+};
 
   const columns = [
     ...baseColumns.slice(0, 2), // S No, Department Name

@@ -1,4 +1,6 @@
 import React, { useContext } from "react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   BrowserRouter as Router,
   Routes,
@@ -34,13 +36,17 @@ import AttendanceReport from "./components/attendance/AttendanceReport.jsx";
 import Setting from "./components/employee/Setting.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
+import Homes from "./components/handons/Homes.jsx";
+import UploadForm from "./components/handons/UploadForm.jsx";
+import Profile from "./components/employee/EditProfile.jsx";
+
 const ProtectedRoute = ({ element, allowedRoles }) => {
   const { user, token } = useContext(AuthContext);
 
   if (!token) return <Navigate to="/login" />;
 
   if (!allowedRoles.includes(user?.role)) {
-    // Switch-case logic for redirection based on role
+    // Redirect theo role
     switch (user?.role) {
       case "admin":
         return <Navigate to="/admin-dashboard" />;
@@ -59,10 +65,13 @@ function App() {
     <Router>
       <Routes>
         {/* public routes */}
+        <Route path="/" element={<Homes />} />
+        <Route path="/upload-forms" element={<UploadForm />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+
         {/* Admin route */}
         <Route
           path="/admin-dashboard"
@@ -73,7 +82,7 @@ function App() {
             />
           }
         >
-          <Route index element={<AdminSummary />}></Route>
+          <Route index element={<AdminSummary />} />
           <Route
             path="/admin-dashboard/attendance"
             element={<AdminAttendance />}
@@ -117,10 +126,6 @@ function App() {
             element={<EmployeeLeaveHistory />}
           />
           <Route
-            path="/admin-dashboard/attendance"
-            element={<AdminAttendance />}
-          />
-          <Route
             path="/admin-dashboard/attendance-report"
             element={<AttendanceReport />}
           />
@@ -138,9 +143,10 @@ function App() {
         >
           <Route index element={<EmpSummaryCard />} />
           <Route
-            path="/employee-dashboard/profile/:id"
-            element={<EmployeeProfile />}
+            path="/employee-dashboard/profile"
+            element={<Profile />}
           />
+
           <Route
             path="/employee-dashboard/profile/:id"
             element={<EmployeeProfile />}
@@ -158,9 +164,11 @@ function App() {
           />
         </Route>
 
-        {/* Fallback for unknown routes */}
+        {/* Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+
+      <ToastContainer position="top-right" autoClose={2000} />
     </Router>
   );
 }

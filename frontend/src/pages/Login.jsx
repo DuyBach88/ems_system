@@ -10,18 +10,20 @@ import { ems } from "../assets";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const response = await axios.post(
         "http://localhost:3000/api/auth/login",
@@ -31,10 +33,10 @@ const Login = () => {
       const userData = response.data.user;
 
       login(userData, token);
-      setOpenDialog(true);
+
+      toast.success("Login successful ", { autoClose: 1500 });
 
       setTimeout(() => {
-        setOpenDialog(false);
         if (userData.role === "admin") {
           navigate("/admin-dashboard");
         } else {
@@ -44,6 +46,9 @@ const Login = () => {
     } catch (error) {
       console.error("Login error:", error.response?.data);
       setError(error.response?.data?.message || "Login failed");
+      toast.error(error.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -159,11 +164,43 @@ const Login = () => {
             </button>
           </div>
 
+          {/* ✅ Nút login với spinner */}
           <button
             type="submit"
-            className="w-full py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium"
+            disabled={loading}
+            className={`w-full py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition 
+              ${loading ? "bg-gray-400 cursor-not-allowed text-white" : "bg-green-500 text-white hover:bg-green-600"}`}
           >
-            Login
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 
+                    5.373 0 12h4zm2 5.291A7.962 7.962 
+                    0 014 12H0c0 3.042 1.135 5.824 
+                    3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Logging in...
+              </span>
+            ) : (
+              "Login"
+            )}
           </button>
         </form>
 
@@ -179,44 +216,6 @@ const Login = () => {
           </button>
         </div>
       </div>
-
-      {/* Loading Modal */}
-      {openDialog && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-10 shadow-2xl max-w-sm w-full mx-4 text-center">
-            <div className="w-20 h-20 mx-auto mb-6 relative">
-              <div className="absolute inset-0 border-4 border-green-200 rounded-lg animate-spin-slow"></div>
-              <div className="absolute inset-1 border-4 border-green-300 rounded-lg animate-spin"></div>
-              <div className="absolute inset-2 border-4 border-green-400 rounded-lg animate-spin-fast"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-green-500 animate-bounce"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={3}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              Signing in...
-            </h3>
-            <p className="text-gray-500 text-sm mb-4">Please wait a moment</p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-green-500 h-2.5 rounded-full animate-pulse"
-                style={{ width: "100%" }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

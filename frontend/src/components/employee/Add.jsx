@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { fetchDepartments } from "../../utils/EmployeeeHelper";
 import axios from "axios";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
 const AddEmployee = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({});
-
+  const [nextEmployeeId, setNextEmployeeId] = useState("");
   const [departments, setDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +24,24 @@ const AddEmployee = () => {
         setDepartments([]);
       }
     };
+
+    const loadNextId = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(
+          "http://localhost:3000/api/employee/next-id",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (res.data.success) setNextEmployeeId(res.data.nextId);
+      } catch (err) {
+        console.error("Failed to load next Employee ID:", err);
+      }
+    };
+
     loadDepartments();
+    loadNextId();
   }, []);
 
   const handleChange = (e) => {
@@ -58,13 +76,14 @@ const AddEmployee = () => {
       );
 
       if (res.data.success) {
+        toast.success("Employee added successfully ");
         navigate("/admin-dashboard/employees");
       } else {
-        setError(res.data.message || "Failed to add employee");
+        toast.error(res.data.message || "Failed to add employee");
       }
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message);
     } finally {
       setIsLoading(false);
     }
@@ -144,15 +163,15 @@ const AddEmployee = () => {
                     htmlFor="employeeId"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    Employee ID *
+                    Employee ID (Auto-generated)
                   </label>
                   <input
                     type="text"
                     id="employeeId"
                     name="employeeId"
-                    onChange={handleChange}
-                    placeholder="e.g. EMP-001"
-                    className={`w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors `}
+                    value={nextEmployeeId || "Loading..."}
+                    disabled
+                    className="w-full border rounded-lg px-4 py-3 bg-gray-100 text-gray-500"
                   />
                 </div>
               </div>

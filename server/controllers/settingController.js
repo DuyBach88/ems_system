@@ -1,4 +1,7 @@
 import User from "../models/User.js";
+import Employee from "../models/Employee.js";
+import cloudinary from "../config/cloudinary.js";
+import { uploadToCloudinary } from "../utils/cloudinaryUpload.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import transporter from "../config/email.js";
@@ -100,4 +103,96 @@ const resetPassword = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-export default { changeSetting, forgotPassword, resetPassword };
+// GET /api/setting/me
+const getProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const employee = await Employee.findOne({ userId }).populate("department");
+
+    return res.json({
+      success: true,
+      user,
+      employee,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, phone, dob, address } = req.body;
+
+    // Tìm user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    let profileImageUrl = user.profileImage;
+    let profileImagePublicId = user.profileImagePublicId;
+
+    // Nếu upload ảnh mới
+    if (req.file) {
+      // Xoá ảnh cũ
+      if (user.profileImagePublicId) {
+        await cloudinary.uploader.destroy(user.profileImagePublicId);
+      }
+      // Upload mới
+      const result = await uploadToCloudinary(req.file.buffer);
+      profileImageUrl = result.url;
+      profileImagePublicId = result.public_id;
+    }
+
+    // Update User
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...(name && { name }),
+        profileImage: profileImageUrl,
+        profileImagePublicId: profileImagePublicId,
+      },
+      { new: true }
+    ).select("-password");
+
+    // Update Employee
+    const updatedEmployee = await Employee.findOneAndUpdate(
+      { userId },
+      {
+        ...(phone && { phone }),
+        ...(dob && { dob }),
+        ...(address && { address }),
+      },
+      { new: true }
+    ).populate("department");
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+      employee: updatedEmployee,
+    });
+  } catch (err) {
+    console.error("updateProfile error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export default {
+  changeSetting,
+  forgotPassword,
+  resetPassword,
+  getProfile,
+  updateProfile,
+};
