@@ -14,12 +14,15 @@ export const checkIn = () => api.post("/checkin");
 /** Ghi nhận Check-Out */
 export const checkOut = () => api.post("/checkout");
 
-/** Lấy lịch sử chấm công của chính user */
-export const getMyAttendance = () => api.get("/me");
+/** Lấy lịch sử chấm công của chính user  */
+export const getMyAttendance = (page = 1, limit = 10) =>
+  api.get("/me", { params: { page, limit } });
+
 
 // Admin APIs
 /** Lấy tất cả bản ghi chấm công */
-export const getAllAttendance = () => api.get("/");
+export const getAllAttendance = (page = 1, limit = 10) =>
+  api.get("/", { params: { page, limit } });
 
 /** Duyệt một bản ghi chấm công */
 export const approveAttendance = (id, status) =>

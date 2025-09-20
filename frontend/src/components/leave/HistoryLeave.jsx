@@ -8,8 +8,6 @@ const badgeColors = {
   rejected: "bg-red-100 text-red-800",
 };
 
-const pageSize = 5;
-
 const EmployeeLeaveHistory = () => {
   const { empId } = useParams();
   const navigate = useNavigate();
@@ -19,6 +17,7 @@ const EmployeeLeaveHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -27,18 +26,22 @@ const EmployeeLeaveHistory = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const params = new URLSearchParams({ page, limit: pageSize, search });
+      const params = new URLSearchParams({ page, limit, search });
       if (statusFilter !== "all") params.append("status", statusFilter);
+
       const res = await axios.get(
         `http://localhost:3000/api/leave/employee/${empId}?${params.toString()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       if (res.data.success) {
         const { employee: empInfo, leaves: lv } = res.data.data;
         setEmployee(empInfo);
         setLeaves(lv.docs || lv);
         setTotalPages(lv.totalPages || 1);
-      } else setError(res.data.message || "Failed to fetch data");
+      } else {
+        setError(res.data.message || "Failed to fetch data");
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message);
     } finally {
@@ -49,7 +52,7 @@ const EmployeeLeaveHistory = () => {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, search]);
+  }, [page, limit, statusFilter, search]);
 
   const nextPage = () => page < totalPages && setPage((p) => p + 1);
   const prevPage = () => page > 1 && setPage((p) => p - 1);
@@ -62,15 +65,15 @@ const EmployeeLeaveHistory = () => {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <img
-          src={employee?.userId.profileImage}
+          src={employee?.userId?.profileImage}
           alt="avatar"
           className="w-16 h-16 rounded-full object-cover border"
         />
         <div>
           <h2 className="text-2xl font-semibold text-gray-800">
-            {employee?.userId.name}
+            {employee?.userId?.name}
           </h2>
-          <p className="text-sm text-gray-600">{employee?.userId.email}</p>
+          <p className="text-sm text-gray-600">{employee?.userId?.email}</p>
         </div>
       </div>
 
@@ -85,7 +88,7 @@ const EmployeeLeaveHistory = () => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="flex-grow md:flex-grow-0 border border-gray-300 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
+            className="flex-grow md:flex-grow-0 border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
           <select
             value={statusFilter}
@@ -93,7 +96,7 @@ const EmployeeLeaveHistory = () => {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
+            className="border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value="all">All</option>
             <option value="pending">Pending</option>
@@ -101,6 +104,7 @@ const EmployeeLeaveHistory = () => {
             <option value="rejected">Rejected</option>
           </select>
         </div>
+
         <button
           onClick={() => navigate(-1)}
           className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-md"
@@ -142,7 +146,7 @@ const EmployeeLeaveHistory = () => {
               return (
                 <tr key={lv._id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {(page - 1) * pageSize + idx + 1}
+                    {(page - 1) * limit + idx + 1}
                   </td>
                   <td
                     className="px-4 py-3 whitespace-nowrap max-w-xs truncate"
@@ -176,27 +180,37 @@ const EmployeeLeaveHistory = () => {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <button
+          onClick={prevPage}
+          disabled={page === 1}
+          className="px-3 py-1 border rounded disabled:opacity-40"
+        >
+          Prev
+        </button>
+
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
           <button
-            onClick={prevPage}
-            disabled={page === 1}
-            className="px-3 py-1 border rounded disabled:opacity-40"
+            key={num}
+            onClick={() => setPage(num)}
+            className={`px-3 py-1 border rounded ${
+              page === num
+                ? "bg-indigo-500 text-white"
+                : "bg-white hover:bg-gray-50"
+            }`}
           >
-            Prev
+            {num}
           </button>
-          <span className="text-sm">
-            Page {page} / {totalPages}
-          </span>
-          <button
-            onClick={nextPage}
-            disabled={page === totalPages}
-            className="px-3 py-1 border rounded disabled:opacity-40"
-          >
-            Next
-          </button>
-        </div>
-      )}
+        ))}
+
+        <button
+          onClick={nextPage}
+          disabled={page === totalPages}
+          className="px-3 py-1 border rounded disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };

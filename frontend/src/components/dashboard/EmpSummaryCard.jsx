@@ -28,11 +28,22 @@ const EmpSummaryCard = () => {
           {/* Header Section */}
           <div className="flex items-center space-x-4">
             <div className="relative">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white shadow-lg">
-                <FaUser className="text-2xl" />
-              </div>
+              {user?.profileImage ? (
+                <img
+                  src={user.profileImage}
+                  alt={user.name}
+                  className="w-16 h-16 rounded-full object-cover shadow-lg border-2 border-white"
+                />
+              ) : (
+                <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white shadow-lg">
+                  <FaUser className="text-2xl" />
+                </div>
+              )}
+
+              {/* Status indicator */}
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
             </div>
+
             <div>
               <p className="text-gray-600 text-sm font-medium">
                 {getGreeting()}

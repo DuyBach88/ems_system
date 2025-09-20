@@ -1,24 +1,10 @@
 import Employee from "../models/Employee.js";
 import LeaveRequest from "../models/Leave.js";
 import transporter from "../config/email.js";
-const simplePaginate = async (
-  Model,
-  query,
-  { page = 1, limit = 10, sort = "-createdAt" }
-) => {
-  const skip = (page - 1) * limit;
 
-  // Lấy trang hiện tại
-  const docs = await Model.find(query).sort(sort).skip(skip).limit(limit);
-
-  // Đếm tổng số bản ghi
-  const total = await Model.countDocuments(query);
-
-  return {
-    docs,
-    totalPages: Math.ceil(total / limit),
-  };
-};
+/* ------------------------------
+   API: Nhân viên xin nghỉ phép
+------------------------------- */
 const addLeave = async (req, res) => {
   try {
     const { userId, leaveType, startDate, endDate, reason } = req.body;
@@ -27,33 +13,39 @@ const addLeave = async (req, res) => {
         .status(400)
         .json({ success: false, message: "All fields are required" });
     }
+
     const sDate = new Date(startDate);
     const eDate = new Date(endDate);
     if (isNaN(sDate) || isNaN(eDate))
       return res
         .status(400)
         .json({ success: false, message: "Invalid date format." });
+
     if (sDate > eDate)
-      return res.status(400).json({
-        success: false,
-        message: "Start date cannot be after end date.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Start date cannot be after end date.",
+        });
+
     const employee = await Employee.findOne({ userId });
-    // const overlap = await LeaveRequest.findOne({
-    //   employeeId: employee._id,
-    //   status: { $in: ["pending", "approved"] },
-    //   $or: [
-    //     {
-    //       startDate: { $lte: eDate },
-    //       endDate: { $gte: sDate },
-    //     },
-    //   ],
-    // });
-    // if (overlap)
-    //   return res.status(409).json({
-    //     success: false,
-    //     message: "Requested dates overlap with an existing leave.",
-    //   });
+    if (!employee)
+      return res
+        .status(404)
+        .json({ success: false, message: "Employee not found" });
+
+    // Kiểm tra trùng lịch nghỉ (pending hoặc approved)
+    const overlap = await LeaveRequest.findOne({
+      employeeId: employee._id,
+      status: { $in: ["pending", "approved"] },
+      $or: [{ startDate: { $lte: eDate }, endDate: { $gte: sDate } }],
+    });
+    if (overlap)
+      return res.status(409).json({
+        success: false,
+        message: "Requested dates overlap with an existing leave.",
+      });
 
     const leave = await LeaveRequest.create({
       employeeId: employee._id,
@@ -62,12 +54,16 @@ const addLeave = async (req, res) => {
       endDate,
       reason,
     });
+
     return res.status(200).json({ success: true, leave });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+/* ------------------------------
+   API: Xem đơn nghỉ của chính mình
+------------------------------- */
 const getMyLeaves = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = "" } = req.query;
@@ -80,42 +76,117 @@ const getMyLeaves = async (req, res) => {
     const query = { employeeId: employee._id };
     if (search) query.reason = { $regex: search, $options: "i" };
 
-    const data = await simplePaginate(LeaveRequest, query, {
-      page: Number(page),
-      limit: Number(limit),
-      sort: "-createdAt",
-    });
+    const skip = (page - 1) * limit;
+    const [docs, totalDocs] = await Promise.all([
+      LeaveRequest.find(query)
+        .sort("-createdAt")
+        .skip(skip)
+        .limit(Number(limit)),
+      LeaveRequest.countDocuments(query),
+    ]);
 
-    res.json({ success: true, data });
+    res.json({
+      success: true,
+      data: {
+        docs,
+        totalDocs,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(totalDocs / limit),
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
+/* ------------------------------
+   API: Admin xem tất cả đơn nghỉ
+------------------------------- */
 const getAllLeaves = async (req, res) => {
   try {
     const { page = 1, limit = 10, status, search = "" } = req.query;
 
     const query = {};
-    if (status) query.status = status; // pending / approved / rejected
+    if (status) query.status = status;
     if (search) query.reason = { $regex: search, $options: "i" };
 
-    const data = await simplePaginate(LeaveRequest, query, {
-      page: Number(page),
-      limit: Number(limit),
-      sort: "-createdAt",
-    });
+    const skip = (page - 1) * limit;
+    const [docs, totalDocs] = await Promise.all([
+      LeaveRequest.find(query)
+        .sort("-createdAt")
+        .skip(skip)
+        .limit(Number(limit))
+        .populate({
+          path: "employeeId",
+          populate: { path: "userId", select: "name email" },
+        }),
+      LeaveRequest.countDocuments(query),
+    ]);
 
-    await LeaveRequest.populate(data.docs, {
-      path: "employeeId",
-      populate: { path: "userId", select: "name email" },
+    res.json({
+      success: true,
+      data: {
+        docs,
+        totalDocs,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(totalDocs / limit),
+      },
     });
-
-    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+/* ------------------------------
+   API: Admin xem đơn nghỉ của 1 nhân viên
+------------------------------- */
+const getLeavesByEmployee = async (req, res) => {
+  try {
+    const { empId } = req.params;
+    const { page = 1, limit = 10, status, search = "" } = req.query;
+
+    const employee = await Employee.findById(empId).populate(
+      "userId",
+      "name email profileImage"
+    );
+    if (!employee)
+      return res
+        .status(404)
+        .json({ success: false, message: "Employee not found" });
+
+    const query = { employeeId: empId };
+    if (status) query.status = status;
+    if (search) query.reason = { $regex: search, $options: "i" };
+
+    const skip = (page - 1) * limit;
+    const [docs, totalDocs] = await Promise.all([
+      LeaveRequest.find(query)
+        .sort("-createdAt")
+        .skip(skip)
+        .limit(Number(limit)),
+      LeaveRequest.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        employee,
+        leaves: {
+          docs,
+          totalDocs,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages: Math.ceil(totalDocs / limit),
+        },
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const changeLeaveStatus = (newStatus) => async (req, res) => {
   try {
     const leave = await LeaveRequest.findById(req.params.id).populate({
@@ -388,35 +459,7 @@ const changeLeaveStatus = (newStatus) => async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-const getLeavesByEmployee = async (req, res) => {
-  try {
-    const { empId } = req.params;
-    const { page = 1, limit = 10, status, search = "" } = req.query;
 
-    const employee = await Employee.findById(empId).populate(
-      "userId",
-      "name email profileImage"
-    );
-    if (!employee)
-      return res
-        .status(404)
-        .json({ success: false, message: "Employee not found" });
-
-    const query = { employeeId: empId };
-    if (status) query.status = status;
-    if (search) query.reason = { $regex: search, $options: "i" };
-
-    const leaves = await LeaveRequest.paginate(query, {
-      page,
-      limit,
-      sort: "-createdAt",
-    });
-
-    res.json({ success: true, data: { employee, leaves } });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
 export {
   addLeave,
   getMyLeaves,

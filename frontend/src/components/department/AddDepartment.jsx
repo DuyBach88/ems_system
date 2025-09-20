@@ -1,96 +1,68 @@
-import axios from "axios";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { createDepartment } from "../../services/departmentService";
 
 const AddDepartment = () => {
   const navigate = useNavigate();
-  const [department, setDepartment] = useState({});
+  const [department, setDepartment] = useState({ dep_name: "", description: "" });
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setDepartment((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setDepartment((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const response = await axios.post(
-        "http://localhost:3000/api/department/add",
-        department,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
+      const response = await createDepartment(department);
       if (response.data.success) {
-        toast.success("🎉 Department added successfully!");
-        setTimeout(() => {
-          navigate("/admin-dashboard/departments");
-        }, 1500);
-      }
-    } catch (error) {
-      if (error.response && !error.response.data.success) {
-        toast.error(error.response.data.message || "Failed to add department");
+        toast.success(" Department added successfully!");
+        setTimeout(() => navigate("/admin-dashboard/departments"), 1500);
       } else {
-        toast.error("Server error. Please try again!");
+        toast.error(response.data.message || "Failed to add department");
       }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Server error. Please try again!");
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-
-  return (
+  return loading ? (
+    <div className="flex justify-center items-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+    </div>
+  ) : (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Add New Department
-        </h2>
-
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Department</h2>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Department Name
-            </label>
+            <label className="block text-gray-700 mb-1">Department Name</label>
             <input
               type="text"
               name="dep_name"
+              value={department.dep_name}
               onChange={handleChange}
               required
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter department name"
             />
           </div>
-
           <div>
-            <label className="block text-gray-700 font-medium mb-1">
-              Description
-            </label>
+            <label className="block text-gray-700 mb-1">Description</label>
             <textarea
               name="description"
+              value={department.description}
               onChange={handleChange}
-              rows="4"
+              rows={4}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter department description"
+              placeholder="Enter description"
             ></textarea>
           </div>
-
           <div className="flex justify-end gap-4">
             <button
               type="button"

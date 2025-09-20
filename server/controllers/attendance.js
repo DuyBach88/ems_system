@@ -7,7 +7,6 @@ import Employee from "../models/Employee.js";
 /** POST /api/attendance/checkin */
 const checkIn = async (req, res) => {
   try {
-    // Tìm nhân viên dựa trên userId từ token
     const emp = await Employee.findOne({ userId: req.user.id });
     if (!emp) {
       return res
@@ -15,12 +14,24 @@ const checkIn = async (req, res) => {
         .json({ success: false, message: "Employee not found" });
     }
     const employeeId = emp._id;
-    const todayKey = new Date().toISOString().split("T")[0];
 
-    // Tìm hoặc tạo mới bản ghi cho ngày hôm nay
+    // Chuẩn hóa ngày về 00:00:00
+    const today = new Date();
+    const todayKey = new Date(today.setHours(0, 0, 0, 0));
+
+    // Tìm hoặc tạo mới
     let attendance = await Attendance.findOne({ employeeId, date: todayKey });
     if (!attendance) {
       attendance = new Attendance({ employeeId, date: todayKey });
+    } else {
+      // Nếu session cuối chưa đóng thì không cho check-in
+      const lastSession = attendance.times[attendance.times.length - 1];
+      if (lastSession && !lastSession.out) {
+        return res.status(400).json({
+          success: false,
+          message: "You must check out before starting a new session",
+        });
+      }
     }
 
     attendance.times.push({ in: new Date(), out: null });
@@ -46,7 +57,9 @@ const checkOut = async (req, res) => {
         .json({ success: false, message: "Employee not found" });
     }
     const employeeId = emp._id;
-    const todayKey = new Date().toISOString().split("T")[0];
+
+    const today = new Date();
+    const todayKey = new Date(today.setHours(0, 0, 0, 0));
 
     const attendance = await Attendance.findOne({ employeeId, date: todayKey });
     if (!attendance || attendance.times.length === 0) {
@@ -56,6 +69,12 @@ const checkOut = async (req, res) => {
     }
 
     const lastSession = attendance.times[attendance.times.length - 1];
+    if (lastSession.out) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Already checked out" });
+    }
+
     lastSession.out = new Date();
     attendance.inOutStatus = "out";
     attendance.checkOutCount += 1;
@@ -82,13 +101,33 @@ const getMyAttendance = async (req, res) => {
     }
     const employeeId = emp._id;
 
-    const records = await Attendance.find({ employeeId }).sort({ date: -1 });
-    return res.json({ success: true, records });
+    // Query params
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // 1) Total count
+    const total = await Attendance.countDocuments({ employeeId });
+    const totalPages = Math.ceil(total / limit);
+
+    // 2) Records phân trang
+    const records = await Attendance.find({ employeeId })
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    return res.json({
+      success: true,
+      page: parseInt(page),
+      totalPages,
+      totalRecords: total,
+      records,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // ================= Admin controllers =================
 
@@ -115,18 +154,30 @@ const approveMultiple = async (req, res) => {
       { _id: { $in: ids } },
       { approvalStatus: status, approveBy: req.user.id }
     );
-    return res.json({ success: true, modifiedCount: result.nModified });
+    return res.json({ success: true, modifiedCount: result.modifiedCount });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-/** GET /api/attendance */
 
+/** GET /api/attendance */
 const getAllAttendance = async (req, res) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    // 1) Tổng số bản ghi
+    const total = await Attendance.countDocuments({});
+    const totalPages = Math.ceil(total / limit);
+
+    // 2) Query phân trang
     const records = await Attendance.aggregate([
+      { $sort: { date: -1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) },
+
       {
         $lookup: {
           from: "employees",
@@ -162,21 +213,21 @@ const getAllAttendance = async (req, res) => {
           _id: 1,
           empCode: "$emp.employeeId",
           empName: "$user.name",
-          deptName: "$dept.name",
+          deptName: "$dept.dep_name",
           date: 1,
           times: 1,
           approvalStatus: 1,
         },
       },
-      { $sort: { date: -1 } },
     ]);
 
-    res.json({ success: true, records });
+    res.json({ success: true, page: parseInt(page), totalPages, totalRecords: total, records });
   } catch (err) {
     console.error("Error fetching attendance:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 /** DELETE /api/attendance/:id */
 const deleteAttendance = async (req, res) => {
@@ -228,83 +279,53 @@ const manualCheckOut = async (req, res) => {
 const dailyAttendanceReport = async (req, res) => {
   try {
     const { date, page = 1, limit = 10 } = req.query;
-    if (!date)
-      return res.status(400).json({ success: false, message: "Missing date" });
+    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
 
-    // Build day range
     const d = new Date(date);
     const start = new Date(d.setHours(0, 0, 0, 0));
     const end = new Date(d.setHours(23, 59, 59, 999));
 
-    // 1) Total count for paging
-    const total = await Attendance.countDocuments({
-      date: { $gte: start, $lte: end },
-    });
+    const total = await Attendance.countDocuments({ date: { $gte: start, $lte: end } });
     const totalPages = Math.ceil(total / limit);
     const skip = (page - 1) * limit;
 
-    // 2) Attendance‐status counts (e.g. present/absent/…)
+    // status counts
     const statusCounts = await Attendance.aggregate([
       { $match: { date: { $gte: start, $lte: end } } },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
-    // 3) Approval‐status counts (Approved/Pending/Rejected)
+    // approval counts
     const approvalCounts = await Attendance.aggregate([
       { $match: { date: { $gte: start, $lte: end } } },
       { $group: { _id: "$approvalStatus", count: { $sum: 1 } } },
     ]);
 
-    // 4) Paged records with lookups
+    // records phân trang
     const records = await Attendance.aggregate([
       { $match: { date: { $gte: start, $lte: end } } },
+      { $sort: { "emp.employeeId": 1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) },
 
-      // join Employee → emp
-      {
-        $lookup: {
-          from: "employees",
-          localField: "employeeId",
-          foreignField: "_id",
-          as: "emp",
-        },
-      },
+      { $lookup: { from: "employees", localField: "employeeId", foreignField: "_id", as: "emp" } },
       { $unwind: "$emp" },
 
-      // join User → user
-      {
-        $lookup: {
-          from: "users",
-          localField: "emp.userId",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
+      { $lookup: { from: "users", localField: "emp.userId", foreignField: "_id", as: "user" } },
       { $unwind: "$user" },
 
-      // join Department → dept
-      {
-        $lookup: {
-          from: "departments",
-          localField: "emp.department",
-          foreignField: "_id",
-          as: "dept",
-        },
-      },
+      { $lookup: { from: "departments", localField: "emp.department", foreignField: "_id", as: "dept" } },
       { $unwind: "$dept" },
 
-      // only needed fields
       {
         $project: {
           empCode: "$emp.employeeId",
           empName: "$user.name",
           deptName: "$dept.dep_name",
-          status: "$status", // attendance status
-          approvalStatus: "$approvalStatus", // <-- new
+          status: "$status",
+          approvalStatus: "$approvalStatus",
         },
       },
-      { $sort: { empCode: 1 } },
-      { $skip: skip },
-      { $limit: parseInt(limit) },
     ]);
 
     return res.json({
@@ -312,8 +333,9 @@ const dailyAttendanceReport = async (req, res) => {
       date: start.toISOString().split("T")[0],
       page: parseInt(page),
       totalPages,
-      statusCounts, // [ { _id:"present", count:10 }, … ]
-      approvalCounts, // [ { _id:"Approved", count:8 }, … ]
+      totalRecords: total,
+      statusCounts,
+      approvalCounts,
       records,
     });
   } catch (err) {
@@ -321,6 +343,7 @@ const dailyAttendanceReport = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 export default {
   checkIn,

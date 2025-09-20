@@ -1,73 +1,78 @@
 import React, { useEffect, useState } from "react";
 import { FaCalendarAlt } from "react-icons/fa";
-import { fetchDepartments } from "../../utils/EmployeeeHelper";
-import { getEmployees } from "../../services/employeeService";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { toast } from "react-toastify";
+import { getAllDepartments } from "../../services/departmentService";
+import { getEmployeesByDepartment } from "../../services/employeeService";
+import { createSalary } from "../../services/salaryService";
 
-export default function AddSalary() {
+const AddSalary = () => {
   const navigate = useNavigate();
-  const [errors, setErrors] = useState({});
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     department: "",
     employeeId: "",
-    basicSalary: "0",
-    allowances: "0",
-    deductions: "0",
+    basicSalary: "",
+    allowances: "",
+    deductions: "",
     payDate: "",
   });
 
+  // 🔹 load departments khi mount
   useEffect(() => {
     const loadDepartments = async () => {
       try {
-        const deptData = await fetchDepartments();
-        setDepartments(deptData || []);
+        const res = await getAllDepartments({ page: 1, limit: 100 });
+        if (res.data.success) {
+          setDepartments(res.data.data.docs);
+        }
       } catch (err) {
-        console.error("Failed to load departments:", err);
-        setDepartments([]);
+        toast.error("Không load được danh sách phòng ban");
       }
     };
-
     loadDepartments();
   }, []);
 
-  const handleInputChange = (e) => {
+  // 🔹 change input chung
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleDepartmentChange = async (e) => {
-    const selectedDepartment = e.target.value;
-    const emps = await getEmployees(selectedDepartment);
-    setEmployees(emps);
-    setFormData((prev) => ({
-      ...prev,
-      department: selectedDepartment,
-    }));
+    const depId = e.target.value;
+    setFormData((prev) => ({ ...prev, department: depId, employeeId: "" }));
+    if (!depId) {
+      setEmployees([]);
+      return;
+    }
+    try {
+      const emps = await getEmployeesByDepartment(depId);
+      setEmployees(emps || []);
+    } catch (err) {
+      toast.error("Do not load employees for this department");
+    }
   };
 
+  // 🔹 submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      const response = await axios.post(
-        `http://localhost:3000/api/salary/add`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-      if (response.data.success) {
-        navigate("/admin-dashboard/employees");
+      const res = await createSalary(formData);
+      if (res.data.success) {
+        toast.success("Salary added successfully");
+        navigate("/admin-dashboard/employees"); 
+      } else {
+        toast.error(res.data.message || "Failed to add salary");
       }
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to add salary");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,7 +85,7 @@ export default function AddSalary() {
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Department and Employee Row */}
+            {/* Department + Employee */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -90,7 +95,7 @@ export default function AddSalary() {
                   name="department"
                   value={formData.department}
                   onChange={handleDepartmentChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-500 text-base"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Department</option>
                   {departments.map((dept) => (
@@ -108,20 +113,20 @@ export default function AddSalary() {
                 <select
                   name="employeeId"
                   value={formData.employeeId}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-500 text-base"
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Employee</option>
                   {employees.map((emp) => (
                     <option key={emp._id} value={emp._id}>
-                      {emp.employeeId}
+                      {emp.employeeId} - {emp.userId?.name}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* Basic Salary and Allowances Row */}
+            {/* Basic Salary + Allowances */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -131,12 +136,11 @@ export default function AddSalary() {
                   type="number"
                   name="basicSalary"
                   value={formData.basicSalary}
-                  onChange={handleInputChange}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Insert Salary"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-base"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Allowances
@@ -145,14 +149,14 @@ export default function AddSalary() {
                   type="number"
                   name="allowances"
                   value={formData.allowances}
-                  onChange={handleInputChange}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Monthly Allowances"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-base"
                 />
               </div>
             </div>
 
-            {/* Deductions and Pay Date Row */}
+            {/* Deductions + Pay Date */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -162,12 +166,11 @@ export default function AddSalary() {
                   type="number"
                   name="deductions"
                   value={formData.deductions}
-                  onChange={handleInputChange}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Monthly Deductions"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 text-base"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Pay Date
@@ -177,22 +180,22 @@ export default function AddSalary() {
                     type="date"
                     name="payDate"
                     value={formData.payDate}
-                    onChange={handleInputChange}
-                    placeholder="mm/dd/yyyy"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                   <FaCalendarAlt className="absolute right-4 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <div className="pt-6">
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium text-base"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-3.5 px-6 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition duration-200"
               >
-                Add Salary
+                {loading ? "Saving..." : "Add Salary"}
               </button>
             </div>
           </form>
@@ -200,4 +203,6 @@ export default function AddSalary() {
       </div>
     </div>
   );
-}
+};
+
+export default AddSalary;

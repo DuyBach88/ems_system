@@ -119,14 +119,95 @@ const addEmployee = async (req, res) => {
 };
 
 // GET ALL EMPLOYEES
-
 const getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find()
-      .populate({ path: "userId", select: "-password" })
-      .populate("department");
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      department,
+      gender,
+      role,
+    } = req.query;
 
-    res.status(200).json({ success: true, employees });
+    const query = {};
+
+    //  Multi search
+    if (search) {
+      query.$or = [
+        { phone: { $regex: search, $options: "i" } },
+        { address: { $regex: search, $options: "i" } },
+        { designation: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    //  Filter by department
+    if (department) query.department = department;
+
+    //  Filter by gender
+    if (gender) query.gender = gender;
+
+    const skip = (page - 1) * limit;
+
+    const pipeline = [
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userId",
+        },
+      },
+      { $unwind: "$userId" },
+      {
+        $lookup: {
+          from: "departments",
+          localField: "department",
+          foreignField: "_id",
+          as: "department",
+        },
+      },
+      { $unwind: "$department" },
+      {
+        $match: {
+          ...query,
+          ...(search
+            ? {
+                $or: [
+                  { "userId.name": { $regex: search, $options: "i" } },
+                  { "userId.email": { $regex: search, $options: "i" } },
+                  { phone: { $regex: search, $options: "i" } },
+                  { address: { $regex: search, $options: "i" } },
+                  { designation: { $regex: search, $options: "i" } },
+                ],
+              }
+            : {}),
+          ...(role ? { "userId.role": role } : {}),
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: Number(limit) },
+    ];
+
+    const [docs, totalDocs] = await Promise.all([
+      Employee.aggregate(pipeline),
+      Employee.aggregate([
+        ...pipeline.slice(0, -3), // bỏ skip + limit
+        { $count: "total" },
+      ]),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        docs,
+        totalDocs: totalDocs[0]?.total || 0,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil((totalDocs[0]?.total || 0) / limit),
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -170,12 +251,10 @@ const updateEmployee = async (req, res) => {
     const { name, designation, department, salary } = req.body;
 
     if (!name || !designation || !department) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Name, designation, and department are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Name, designation, and department are required",
+      });
     }
 
     const employee = await Employee.findById(id);
@@ -230,20 +309,21 @@ const updateEmployee = async (req, res) => {
       .status(200)
       .json({ success: true, message: "Employee updated successfully" });
   } catch (err) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: err.message || "Internal server error",
-      });
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal server error",
+    });
   }
 };
 
-// GET EMPLOYEES BY DEPARTMENT
 const fetchEmployeesByDepId = async (req, res) => {
   try {
     const { id } = req.params;
-    const employees = await Employee.find({ department: id });
+    const employees = await Employee.find({ department: id }).populate(
+      "userId",
+      "name email"
+    ); // thêm populate
+
     res.status(200).json({ success: true, employees });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

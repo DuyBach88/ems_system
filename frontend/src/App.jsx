@@ -30,7 +30,7 @@ import MySalary from "./components/employee/MySalary.jsx";
 import AddLeave from "./components/leave/AddLeave.jsx";
 import LeaveList from "./components/leave/MyLeave.jsx";
 import EmployeeLeaveHistory from "./components/leave/HistoryLeave.jsx";
-import EmployeeAttendance from "./components/dashboard/EmployeeAttendance.jsx";
+import EmployeeAttendance from "./components/employee/EmployeeAttendance.jsx";
 import AdminAttendance from "./components/attendance/AdminAttendance.jsx";
 import AttendanceReport from "./components/attendance/AttendanceReport.jsx";
 import Setting from "./components/employee/Setting.jsx";

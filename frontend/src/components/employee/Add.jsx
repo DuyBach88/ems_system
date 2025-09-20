@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { fetchDepartments } from "../../utils/EmployeeeHelper";
-import axios from "axios";
 import { toast } from "react-toastify";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import {
+  createEmployee,
+  getNextEmployeeId,
+} from "../../services/employeeService";
+import { getAllDepartments } from "../../services/departmentService";
 
 const AddEmployee = () => {
   const navigate = useNavigate();
@@ -13,12 +17,13 @@ const AddEmployee = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Load departments once
   useEffect(() => {
     const loadDepartments = async () => {
       try {
-        const deptData = await fetchDepartments();
-        setDepartments(deptData || []);
+        const res = await getAllDepartments({ page: 1, limit: 100 });
+        if (res.data.success) {
+          setDepartments(res.data.data.docs);
+        }
       } catch (err) {
         console.error("Failed to load departments:", err);
         setDepartments([]);
@@ -27,13 +32,7 @@ const AddEmployee = () => {
 
     const loadNextId = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(
-          "http://localhost:3000/api/employee/next-id",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const res = await getNextEmployeeId();
         if (res.data.success) setNextEmployeeId(res.data.nextId);
       } catch (err) {
         console.error("Failed to load next Employee ID:", err);
@@ -64,19 +63,10 @@ const AddEmployee = () => {
     });
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        "http://localhost:3000/api/employee/add-employee",
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await createEmployee(payload);
 
       if (res.data.success) {
-        toast.success("Employee added successfully ");
+        toast.success("Employee added successfully 🎉");
         navigate("/admin-dashboard/employees");
       } else {
         toast.error(res.data.message || "Failed to add employee");
@@ -240,6 +230,7 @@ const AddEmployee = () => {
                     id="gender"
                     name="gender"
                     onChange={handleChange}
+                    value={formData.gender || ""}
                     className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                   >
                     <option value="male">Male</option>

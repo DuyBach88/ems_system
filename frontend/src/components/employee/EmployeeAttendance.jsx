@@ -8,6 +8,9 @@ import {
 
 export default function EmployeeAttendance() {
   const { user } = useContext(AuthContext);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
   const [todayRecord, setTodayRecord] = useState(null);
@@ -15,15 +18,17 @@ export default function EmployeeAttendance() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await getMyAttendance();
+      const res = await getMyAttendance(page, limit);
       if (res.data.success) {
         setRecords(res.data.records);
-        // Find today's record
+        setTotalPages(res.data.totalPages);
+
+        // Xác định today's record (tính trên records trả về)
         const today = new Date().toDateString();
         const todayRec = res.data.records.find(
           (rec) => new Date(rec.date).toDateString() === today
         );
-        setTodayRecord(todayRec);
+        setTodayRecord(todayRec || null);
       }
     } catch (err) {
       console.error(err);
@@ -35,7 +40,7 @@ export default function EmployeeAttendance() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]); // ⚡ reload khi đổi trang
 
   const handleCheckIn = async () => {
     try {
@@ -57,10 +62,10 @@ export default function EmployeeAttendance() {
     }
   };
 
-  // Calculate today's progress
+  // ✅ Tính tiến độ làm việc hôm nay
   const getTodayProgress = () => {
     if (!todayRecord) return { hours: 0, percentage: 0 };
-    const targetHours = 8; // 8 hours target
+    const targetHours = 8;
     const currentHours = todayRecord.totalHours;
     const percentage = Math.min((currentHours / targetHours) * 100, 100);
     return { hours: currentHours, percentage };
@@ -68,7 +73,7 @@ export default function EmployeeAttendance() {
 
   const { hours: todayHours, percentage: todayPercentage } = getTodayProgress();
 
-  // Check if user can check out (has checked in today)
+  // ✅ Kiểm tra nếu hôm nay đã check-in nhưng chưa check-out
   const canCheckOut =
     todayRecord && todayRecord.times.some((t) => t.in && !t.out);
 
@@ -149,7 +154,7 @@ export default function EmployeeAttendance() {
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-blue-600 font-semibold">
-                        {index + 1}
+                        {(page - 1) * limit + index + 1}
                       </span>
                     </div>
                     <div>
@@ -188,17 +193,56 @@ export default function EmployeeAttendance() {
                           : "bg-yellow-100 text-yellow-800"
                       }`}
                     >
-                      {rec.approvalStatus === "Approved"
-                        ? "Checked In"
-                        : rec.approvalStatus === "Rejected"
-                        ? "Rejected"
-                        : "Pending"}
+                      {rec.approvalStatus}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
           )}
+
+          <div className="flex justify-center items-center space-x-2 mt-6">
+            {/* Prev */}
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              className={`px-3 py-1 rounded-lg border ${
+                page === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-100 text-gray-700"
+              }`}
+            >
+              Prev
+            </button>
+
+            {/* Page numbers */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+              <button
+                key={num}
+                onClick={() => setPage(num)}
+                className={`px-3 py-1 rounded-lg border ${
+                  page === num
+                    ? "bg-blue-500 text-white font-semibold"
+                    : "bg-white hover:bg-gray-100 text-gray-700"
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+
+            {/* Next */}
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className={`px-3 py-1 rounded-lg border ${
+                page === totalPages
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-100 text-gray-700"
+              }`}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

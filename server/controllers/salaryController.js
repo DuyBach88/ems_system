@@ -34,24 +34,42 @@ const addSalary = async (req, res) => {
   }
 };
 const getSalary = async (req, res) => {
-  let salary;
   try {
     const { id } = req.params;
-    salary = await Salary.find({ employeeId: id }).populate(
-      "employeeId",
-      "employeeId"
-    );
-    if (!salary || salary.length < 1) {
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    let salaries = await Salary.find({ employeeId: id })
+      .populate("employeeId", "employeeId")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ payDate: -1 });
+
+    // Nếu không có, thử tìm theo userId
+    if (!salaries || salaries.length < 1) {
       const employee = await Employee.findOne({ userId: id });
-      salary = await Salary.find({ employeeId: employee._id }).populate(
-        "employeeId",
-        "employeeId"
-      );
-      console.log(salary);
+      if (employee) {
+        salaries = await Salary.find({ employeeId: employee._id })
+          .populate("employeeId", "employeeId")
+          .skip(skip)
+          .limit(parseInt(limit))
+          .sort({ payDate: -1 });
+      }
     }
+
+    const total = await Salary.countDocuments({ employeeId: id });
+    const totalPages = Math.ceil(total / limit);
+
+    // ✅ LUÔN trả về success, kể cả khi rỗng
     res.status(200).json({
       success: true,
-      salary,
+      salaries: salaries || [],
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -60,4 +78,6 @@ const getSalary = async (req, res) => {
     });
   }
 };
+
+
 export { addSalary, getSalary };

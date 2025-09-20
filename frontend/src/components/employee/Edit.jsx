@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchDepartments } from "../../utils/EmployeeeHelper";
-import axios from "axios";
+import { getAllDepartments } from "../../services/departmentService";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getEmployeeByUserId,
@@ -48,8 +47,12 @@ const Edit = () => {
 
     const loadDepartments = async () => {
       try {
-        const deptData = await fetchDepartments();
-        setDepartments(deptData || []);
+        const res = await getAllDepartments({ page: 1, limit: 100 });
+        if (res.data.success) {
+          setDepartments(res.data.data.docs);
+        } else {
+          setDepartments([]);
+        }
       } catch (err) {
         console.error("Failed to load departments:", err);
         setDepartments([]);
@@ -91,7 +94,7 @@ const Edit = () => {
       const res = await updateEmployee(id, payload);
 
       if (res.data.success) {
-        toast.success("Employee updated successfully 🎉");
+        toast.success("Employee updated successfully ");
         navigate("/admin-dashboard/employees");
       } else {
         setError(res.data.message || "Failed to update employee");

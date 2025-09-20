@@ -22,10 +22,35 @@ const addDepartment = async (req, res) => {
 };
 const listDepartments = async (req, res) => {
   try {
-    const departments = await Department.find();
+    const { page = 1, limit = 5, search = "" } = req.query;
+
+    const query = {};
+
+    //  Tìm kiếm theo tên phòng ban
+    if (search) {
+      query.dep_name = { $regex: search, $options: "i" };
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Lấy dữ liệu + tổng số phòng ban
+    const [docs, totalDocs] = await Promise.all([
+      Department.find(query)
+        .sort("-createdAt")
+        .skip(skip)
+        .limit(Number(limit)),
+      Department.countDocuments(query),
+    ]);
+
     return res.status(200).json({
       success: true,
-      departments,
+      data: {
+        docs,
+        totalDocs,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(totalDocs / limit),
+      },
     });
   } catch (error) {
     return res.status(500).json({
@@ -34,6 +59,7 @@ const listDepartments = async (req, res) => {
     });
   }
 };
+
 
 const editDepartment = async (req, res) => {
   try {

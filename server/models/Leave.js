@@ -35,7 +35,6 @@ const leaveSchema = new Schema(
   }
 );
 
-leaveSchema.plugin(paginate);
 // Create a model based on the schema
 const LeaveRequest = mongoose.model("Leave", leaveSchema);
 

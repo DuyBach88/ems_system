@@ -12,6 +12,9 @@ export default function AdminAttendance() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState("All");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   const STATUS = {
     Approved: "Approved",
@@ -22,8 +25,11 @@ export default function AdminAttendance() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await getAllAttendance();
-      if (res.data.success) setRecords(res.data.records);
+      const res = await getAllAttendance(page, limit);
+      if (res.data.success) {
+        setRecords(res.data.records);
+        setTotalPages(res.data.totalPages);
+      }
     } catch (err) {
       console.error(err);
       alert("Không tải được dữ liệu chấm công.");
@@ -32,11 +38,12 @@ export default function AdminAttendance() {
     }
   };
 
+  //  Reload khi page thay đổi
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]);
 
-  // Thống kê
+  // Thống kê (chỉ trong trang hiện tại)
   const statCount = (s) => records.filter((r) => r.approvalStatus === s).length;
   const stats = {
     total: records.length,
@@ -203,7 +210,7 @@ export default function AdminAttendance() {
                     />
                     <div>
                       <p className="font-medium">
-                        {i + 1}. {rec.empName}
+                        {(page - 1) * limit + i + 1}. {rec.empName}
                       </p>
                       <p className="text-xs text-gray-600">
                         ID {rec.empCode} •{" "}
@@ -291,6 +298,49 @@ export default function AdminAttendance() {
               );
             })
           )}
+        </div>
+
+        <div className="flex justify-center items-center space-x-2 mt-6">
+          {/* Prev */}
+          <button
+            disabled={page === 1}
+            onClick={() => setPage((p) => p - 1)}
+            className={`px-3 py-1 rounded-lg border ${
+              page === 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white hover:bg-gray-100 text-gray-700"
+            }`}
+          >
+            Prev
+          </button>
+
+          {/* Page numbers */}
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+            <button
+              key={num}
+              onClick={() => setPage(num)}
+              className={`px-3 py-1 rounded-lg border ${
+                page === num
+                  ? "bg-blue-500 text-white font-semibold"
+                  : "bg-white hover:bg-gray-100 text-gray-700"
+              }`}
+            >
+              {num}
+            </button>
+          ))}
+
+          {/* Next */}
+          <button
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className={`px-3 py-1 rounded-lg border ${
+              page === totalPages
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white hover:bg-gray-100 text-gray-700"
+            }`}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
