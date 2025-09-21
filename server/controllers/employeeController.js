@@ -16,7 +16,6 @@ const generateEmployeeId = async () => {
   const newNum = lastNum + 1;
   return `EMP-${String(newNum).padStart(4, "0")}`; // EMP-0008
 };
-// Tạo trước Employee ID tiếp theo (preview)
 const getNextEmployeeId = async (req, res) => {
   try {
     const lastEmployee = await Employee.findOne().sort({ createdAt: -1 });
@@ -107,7 +106,7 @@ const addEmployee = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Employee added successfully",
-      employeeId, // trả về để FE hiển thị
+      employeeId, 
     });
   } catch (err) {
     if (savedUser) await User.deleteOne({ _id: savedUser._id });
@@ -322,7 +321,7 @@ const fetchEmployeesByDepId = async (req, res) => {
     const employees = await Employee.find({ department: id }).populate(
       "userId",
       "name email"
-    ); // thêm populate
+    ); 
 
     res.status(200).json({ success: true, employees });
   } catch (err) {

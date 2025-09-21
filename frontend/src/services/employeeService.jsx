@@ -28,7 +28,7 @@ export const getEmployeeByUserId = async (empId) => {
 export const updateEmployee = async (id, employeeData) => {
   return axios.put(`${API_URL}/${id}`, employeeData, getAuthHeaders());
 };
-
+// Get employees by department
 export const getEmployeesByDepartment = async (departmentId) => {
   try {
     const response = await axios.get(
@@ -46,11 +46,11 @@ export const getEmployeesByDepartment = async (departmentId) => {
     return [];
   }
 };
-
+// Get next employee ID for new employee creation
 export const getNextEmployeeId = async () => {
   return axios.get(`${API_URL}/next-id`, getAuthHeaders());
 };
-
+// Create new employee (Admin, HR only)
 export const createEmployee = async (employeeData) => {
   return axios.post(`${API_URL}/add-employee`, employeeData, getAuthHeaders());
 };

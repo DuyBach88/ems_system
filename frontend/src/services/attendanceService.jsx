@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// Khởi tạo axios instance cho Attendance API với token
+// Initialize axios instance for Attendance API with token
 const token = localStorage.getItem("token");
 const api = axios.create({
   baseURL: "http://localhost:3000/api/attendance",
@@ -8,31 +8,30 @@ const api = axios.create({
 });
 
 // Employee APIs
-/** Ghi nhận Check-In */
+/** Record Check-In */
 export const checkIn = () => api.post("/checkin");
 
-/** Ghi nhận Check-Out */
+/** Record Check-Out */
 export const checkOut = () => api.post("/checkout");
 
-/** Lấy lịch sử chấm công của chính user  */
+/** Get attendance history of current user */
 export const getMyAttendance = (page = 1, limit = 10) =>
   api.get("/me", { params: { page, limit } });
 
-
 // Admin APIs
-/** Lấy tất cả bản ghi chấm công */
+/** Get all attendance records */
 export const getAllAttendance = (page = 1, limit = 10) =>
   api.get("/", { params: { page, limit } });
 
-/** Duyệt một bản ghi chấm công */
+/** Approve an attendance record */
 export const approveAttendance = (id, status) =>
   api.patch(`/${id}/approve`, { status });
 
-/** Duyệt nhiều bản ghi chấm công cùng lúc */
+/** Approve multiple attendance records at once */
 export const approveMultiple = (ids, status) =>
   api.patch("/approve", { ids, status });
 export const manualCheckout = (id) => api.patch(`/${id}/manual-checkout`);
-/** Xóa một bản ghi chấm công */
+/** Delete an attendance record */
 export const deleteAttendance = (id) => api.delete(`/${id}`);
 export const getDailyReport = (date, page = 1, limit = 10) =>
   api.get("/report/daily", { params: { date, page, limit } });

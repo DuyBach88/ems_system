@@ -1,4 +1,3 @@
-// src/pages/AttendanceReport.jsx
 import React, { useState, useEffect } from "react";
 import { getDailyReport } from "../../services/attendanceService";
 
@@ -113,7 +112,6 @@ export default function AttendanceReport() {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Total Records */}
           <StatCard
             icon="👥"
             label="Total Records"
@@ -241,48 +239,51 @@ export default function AttendanceReport() {
             </table>
           </div>
 
-          <div className="flex justify-center items-center space-x-2 mt-6">
-            {/* Prev */}
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className={`px-3 py-1 rounded-lg border ${
-                page === 1
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white hover:bg-gray-100 text-gray-700"
-              }`}
-            >
-              Prev
-            </button>
-
-            {/* Page numbers */}
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+          {/* Pagination Controls */}
+          {records.length > 0 && (
+            <div className="flex justify-center items-center space-x-2 mt-6">
+              {/* Prev */}
               <button
-                key={num}
-                onClick={() => setPage(num)}
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
                 className={`px-3 py-1 rounded-lg border ${
-                  page === num
-                    ? "bg-blue-500 text-white font-semibold"
+                  page === 1
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-white hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                {num}
+                Prev
               </button>
-            ))}
 
-            {/* Next */}
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className={`px-3 py-1 rounded-lg border ${
-                page === totalPages
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white hover:bg-gray-100 text-gray-700"
-              }`}
-            >
-              Next
-            </button>
-          </div>
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                <button
+                  key={num}
+                  onClick={() => setPage(num)}
+                  className={`px-3 py-1 rounded-lg border ${
+                    page === num
+                      ? "bg-blue-500 text-white font-semibold"
+                      : "bg-white hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {num}
+                </button>
+              ))}
+
+              {/* Next */}
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className={`px-3 py-1 rounded-lg border ${
+                  page === totalPages
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white hover:bg-gray-100 text-gray-700"
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Empty State */}

@@ -294,9 +294,11 @@ const AddEmployee = () => {
                     />
                   </div>
                   {formData.photo && (
-                    <div className="text-sm text-gray-600">
-                      Selected: {formData.photo.name}
-                    </div>
+                    <img
+                      src={URL.createObjectURL(formData.photo)}
+                      alt="Preview"
+                      className="h-20 w-20 rounded-full object-cover"
+                    />
                   )}
                 </div>
               </div>

@@ -243,6 +243,7 @@ const deleteAttendance = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+/** PATCH /api/attendance/:id/manual-checkout */
 const manualCheckOut = async (req, res) => {
   try {
     const { id } = req.params;
@@ -275,7 +276,7 @@ const manualCheckOut = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-
+/** GET /api/attendance/report/daily?date=YYYY-MM-DD */
 const dailyAttendanceReport = async (req, res) => {
   try {
     const { date, page = 1, limit = 10 } = req.query;

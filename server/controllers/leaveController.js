@@ -186,6 +186,7 @@ const getLeavesByEmployee = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+//
 
 const changeLeaveStatus = (newStatus) => async (req, res) => {
   try {

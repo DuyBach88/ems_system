@@ -5,14 +5,14 @@ const getAuthHeaders = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 });
 
-// Thêm tham số page và limit
+// Add page and limit parameters
 export const getEmpSalary = async (empId, page = 1, limit = 10) => {
   return axios.get(
     `${API_URL}/${empId}?page=${page}&limit=${limit}`,
     getAuthHeaders()
   );
 };
-// add new salary record
+// Add new salary record
 export const createSalary = async (salaryData) => {
   return axios.post(`${API_URL}/add`, salaryData, getAuthHeaders());
 };
