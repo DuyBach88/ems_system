@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { CKEditor } from '@ckeditor/ckeditor5-react';
-import { ClassicEditor, Essentials, Paragraph, Bold, Italic } from 'ckeditor5';
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { getDepartmentById, updateDepartment } from "../../services/departmentService";
+import {
+  getDepartmentById,
+  updateDepartment,
+} from "../../services/departmentService";
 
 const EditDepartment = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [department, setDepartment] = useState({ dep_name: "", description: "" });
+  const [department, setDepartment] = useState({
+    dep_name: "",
+    description: "",
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +25,9 @@ const EditDepartment = () => {
           toast.error("Failed to fetch department.");
         }
       } catch (err) {
-        toast.error(err.response?.data?.message || "Error fetching department.");
+        toast.error(
+          err.response?.data?.message || "Error fetching department."
+        );
       } finally {
         setLoading(false);
       }
@@ -46,7 +52,9 @@ const EditDepartment = () => {
         toast.error(res.data.message || "Failed to update department.");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update department.");
+      toast.error(
+        err.response?.data?.message || "Failed to update department."
+      );
     } finally {
       setLoading(false);
     }
@@ -58,7 +66,9 @@ const EditDepartment = () => {
         <div className="bg-white rounded-2xl shadow-2xl p-12 max-w-md mx-4">
           <div className="flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-slate-600 mb-4"></div>
-            <p className="text-slate-600 font-medium">Loading department details...</p>
+            <p className="text-slate-600 font-medium">
+              Loading department details...
+            </p>
           </div>
         </div>
       </div>
@@ -76,12 +86,24 @@ const EditDepartment = () => {
                 onClick={() => navigate(-1)}
                 className="p-2 hover:bg-slate-100 rounded-xl transition-colors duration-200 group"
               >
-                <svg className="w-6 h-6 text-slate-600 group-hover:text-slate-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <svg
+                  className="w-6 h-6 text-slate-600 group-hover:text-slate-800"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Edit Department</h1>
+                <h1 className="text-2xl font-bold text-slate-800">
+                  Edit Department
+                </h1>
                 <p className="text-slate-600 mt-1">Update department details</p>
               </div>
             </div>
@@ -96,10 +118,22 @@ const EditDepartment = () => {
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Department Name Field */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700 uppercase tracking-wide">Department Name</label>
+                <label className="block text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                  Department Name
+                </label>
                 <div className="relative">
-                  <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  <svg
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
                   </svg>
                   <input
                     type="text"
@@ -111,15 +145,29 @@ const EditDepartment = () => {
                     placeholder="e.g., Engineering Division"
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Update the department's unique name</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Update the department's unique name
+                </p>
               </div>
 
               {/* Description Field */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700 uppercase tracking-wide">Description</label>
+                <label className="block text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                  Description
+                </label>
                 <div className="relative">
-                  <svg className="absolute left-4 top-4 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="absolute left-4 top-4 w-5 h-5 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <textarea
                     name="description"
@@ -130,7 +178,9 @@ const EditDepartment = () => {
                     placeholder="Update the department's responsibilities and goals..."
                   ></textarea>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Optional: Revise the department's role description</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Optional: Revise the department's role description
+                </p>
               </div>
 
               {/* Action Buttons */}
@@ -140,8 +190,18 @@ const EditDepartment = () => {
                   onClick={() => navigate("/admin-dashboard/departments")}
                   className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-colors duration-200 flex items-center space-x-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                   <span>Cancel</span>
                 </button>
@@ -149,8 +209,18 @@ const EditDepartment = () => {
                   type="submit"
                   className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                   <span>Save Changes</span>
                 </button>

@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { Schema } from "mongoose";
-import paginate from "mongoose-paginate-v2";
 const leaveSchema = new Schema(
   {
     employeeId: {
